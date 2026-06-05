@@ -1,0 +1,10 @@
+{
+    "poll_interval": 60,
+    "servers": "<服务器表 spreadsheet/wiki token>",
+    "sheets": {
+        "bts": "<场次表 token>",
+        "svt": "<场次表 token>",
+        "tws": "<场次表 token>",
+        "wkd": "<场次表 token>"
+    }
+}

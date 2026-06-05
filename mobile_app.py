@@ -14,14 +14,37 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 from urllib.request import Request, urlopen
 
-from tools.feishu_sheet import feishu_sheet_to_dict, load_mapping, read_servers
-
-
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 WEB_DIR = os.path.join(BASE_DIR, "web")
 
+
+def _load_dotenv():
+    """加载同目录 .env（不覆盖已存在的环境变量）。无第三方依赖。"""
+    path = os.path.join(BASE_DIR, ".env")
+    if not os.path.exists(path):
+        return
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                key, _, value = line.partition("=")
+                key = key.strip()
+                value = value.strip().strip('"').strip("'")
+                if key and key not in os.environ:
+                    os.environ[key] = value
+    except Exception:
+        pass
+
+
+_load_dotenv()
+
+from tools.feishu_sheet import feishu_sheet_to_dict, load_mapping, read_servers  # noqa: E402
+
+
 ADMIN_USERNAME = os.environ.get("VIEWER_ADMIN_USER", "Admin")
-ADMIN_PASSWORD = os.environ.get("VIEWER_ADMIN_PASSWORD", "Admin1128")
+ADMIN_PASSWORD = os.environ.get("VIEWER_ADMIN_PASSWORD", "")
 ALL_SHEETS = "__all__"
 SESSION_TTL = 12 * 60 * 60
 MAX_BODY_SIZE = 1024 * 1024

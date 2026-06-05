@@ -13,3 +13,4 @@ tmp/
 
 # Local overrides
 .env
+config/feishu_sheets.json

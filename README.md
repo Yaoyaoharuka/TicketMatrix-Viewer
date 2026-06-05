@@ -25,27 +25,30 @@ pip install -r requirements.txt
 
 ## 配置
 
-`config/feishu_sheets.json`：
+仓库不含任何真实凭证或 token，首次使用需准备两份本地文件（均已被 `.gitignore` 忽略）：
 
-```json
-{
-  "poll_interval": 60,
-  "servers": "<服务器表 token>",
-  "sheets": {
-    "bts": "<场次表 token>",
-    "svt": "<场次表 token>"
-  }
-}
+1. **`.env`**（从 `.env.example` 复制）—— 凭证与管理员密码：
+
+```bash
+cp .env.example .env
+# 然后填入 FEISHU_APP_ID / FEISHU_APP_SECRET / VIEWER_ADMIN_PASSWORD
 ```
 
-可选环境变量（均有默认值，可不设）：
+| 变量 | 必填 | 说明 |
+|---|---|---|
+| `FEISHU_APP_ID` | 是 | 飞书应用 ID（缺失则无法读表） |
+| `FEISHU_APP_SECRET` | 是 | 飞书应用 Secret |
+| `VIEWER_ADMIN_USER` | 否 | 管理员用户名，默认 `Admin` |
+| `VIEWER_ADMIN_PASSWORD` | 否 | 管理员密码；不设置则管理员入口禁用 |
 
-| 变量 | 说明 |
-|---|---|
-| `VIEWER_ADMIN_USER` | 管理员用户名 |
-| `VIEWER_ADMIN_PASSWORD` | 管理员密码 |
-| `FEISHU_APP_ID` | 飞书应用 ID |
-| `FEISHU_APP_SECRET` | 飞书应用 Secret |
+2. **`config/feishu_sheets.json`**（从 `config/feishu_sheets.example.json` 复制）—— 飞书表格 token：
+
+```bash
+cp config/feishu_sheets.example.json config/feishu_sheets.json
+# 然后填入 servers 与各场次 token
+```
+
+> 启动时 `mobile_app.py` 会自动读取同目录 `.env`（无第三方依赖），也可改用系统环境变量。
 
 ## 启动
 

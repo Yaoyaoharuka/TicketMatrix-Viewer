@@ -40,8 +40,8 @@ _http = requests.Session()
 
 # ==================== 飞书凭证（复用 payment/feishu.py） ====================
 
-FEISHU_APP_ID = os.environ.get("FEISHU_APP_ID", "cli_aa9b50308eb85cd9")
-FEISHU_APP_SECRET = os.environ.get("FEISHU_APP_SECRET", "sbGBkbtRVPqLGjZx51gwXbu0Lfi1XYOb")
+FEISHU_APP_ID = os.environ.get("FEISHU_APP_ID", "")
+FEISHU_APP_SECRET = os.environ.get("FEISHU_APP_SECRET", "")
 API_BASE = "https://open.feishu.cn/open-apis"
 
 _token_cache = {"token": None, "expire": 0}
@@ -52,6 +52,11 @@ def _get_token():
     now = time.time()
     if _token_cache["token"] and now < _token_cache["expire"]:
         return _token_cache["token"]
+
+    if not FEISHU_APP_ID or not FEISHU_APP_SECRET:
+        raise RuntimeError(
+            "缺少飞书凭证：请设置环境变量 FEISHU_APP_ID 和 FEISHU_APP_SECRET（可写入 .env）"
+        )
 
     resp = _http.post(
         f"{API_BASE}/auth/v3/tenant_access_token/internal",
