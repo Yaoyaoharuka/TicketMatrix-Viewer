@@ -1,0 +1,1162 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>TicketMatrix 日志查看</title>
+  <style>
+    :root {
+      --blue: #1d74f5;
+      --blue-dark: #155cc2;
+      --blue-soft: #eaf3ff;
+      --bg: #f5f9ff;
+      --card: #ffffff;
+      --text: #163152;
+      --muted: #6d8199;
+      --border: #dbe8f6;
+      --danger: #d64545;
+      --shadow: 0 18px 42px rgba(29, 116, 245, 0.14);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(29, 116, 245, 0.18), transparent 34rem),
+        linear-gradient(180deg, #eef6ff 0%, var(--bg) 42%, #ffffff 100%);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+
+    .app {
+      width: min(100%, 540px);
+      margin: 0 auto;
+      padding: 18px 16px 28px;
+    }
+
+    .hero {
+      padding: 22px 4px 18px;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      color: var(--blue-dark);
+      background: rgba(255, 255, 255, 0.72);
+      border: 1px solid rgba(29, 116, 245, 0.18);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    h1 {
+      margin: 14px 0 8px;
+      font-size: clamp(28px, 8vw, 38px);
+      line-height: 1.08;
+      letter-spacing: -0.04em;
+    }
+
+    .subtitle {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .panel,
+    .card {
+      background: rgba(255, 255, 255, 0.92);
+      border: 1px solid rgba(219, 232, 246, 0.9);
+      border-radius: 24px;
+      box-shadow: var(--shadow);
+    }
+
+    .panel {
+      padding: 18px;
+    }
+
+    label {
+      display: block;
+      margin: 14px 0 7px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    select,
+    input {
+      width: 100%;
+      min-height: 48px;
+      padding: 0 14px;
+      color: var(--text);
+      background: #f8fbff;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      outline: none;
+      font-size: 16px;
+      transition: border-color 0.18s ease, box-shadow 0.18s ease;
+    }
+
+    select:focus,
+    input:focus {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 4px rgba(29, 116, 245, 0.12);
+    }
+
+    button {
+      min-height: 48px;
+      border: 0;
+      border-radius: 15px;
+      color: #fff;
+      background: linear-gradient(135deg, var(--blue), #4b9cff);
+      box-shadow: 0 12px 24px rgba(29, 116, 245, 0.24);
+      font-size: 16px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
+    .ghost {
+      color: var(--blue-dark);
+      background: #eef6ff;
+      border: 1px solid rgba(29, 116, 245, 0.18);
+      box-shadow: none;
+    }
+
+    .actions {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .dashboard-actions {
+      display: contents;
+    }
+
+    .floating-refresh {
+      position: fixed;
+      right: max(18px, env(safe-area-inset-right));
+      bottom: max(18px, env(safe-area-inset-bottom));
+      z-index: 12;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 54px;
+      height: 54px;
+      min-height: 54px;
+      padding: 0;
+      border-radius: 999px;
+      font-size: 24px;
+      line-height: 1;
+    }
+
+    .floating-refresh:disabled {
+      opacity: 0.72;
+    }
+
+    .floating-refresh svg {
+      width: 24px;
+      height: 24px;
+      display: block;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin: 16px 0 12px;
+    }
+
+    .topbar h2 {
+      margin: 0;
+      font-size: 20px;
+      letter-spacing: -0.02em;
+    }
+
+    .topbar button {
+      min-height: 40px;
+      padding: 0 14px;
+      font-size: 14px;
+    }
+
+    .admin-stats {
+      display: grid;
+      gap: 10px;
+      margin: 0 0 12px;
+      padding: 14px;
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.78);
+      border: 1px solid rgba(219, 232, 246, 0.9);
+    }
+
+    .stat-group {
+      display: grid;
+      gap: 8px;
+    }
+
+    .stat-title {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .stat-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .server-stat-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .server-stat-card {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      min-height: 72px;
+      padding: 10px;
+      border-radius: 18px;
+      color: var(--blue-dark);
+      background: var(--blue-soft);
+      border: 1px solid rgba(29, 116, 245, 0.08);
+      overflow: visible;
+      cursor: pointer;
+      transition: transform 0.16s ease, box-shadow 0.16s ease;
+    }
+
+    .server-stat-card:active {
+      transform: scale(0.98);
+    }
+
+    .server-stat-card.stat-error {
+      color: var(--blue-dark);
+      background: var(--blue-soft);
+      border-color: rgba(29, 116, 245, 0.08);
+    }
+
+    .server-stat-name {
+      font-size: 22px;
+      line-height: 1;
+      font-weight: 950;
+      white-space: nowrap;
+    }
+
+    .server-stat-label {
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 72px;
+    }
+
+    .server-stat-side {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 12px;
+      min-width: 36px;
+      text-align: right;
+    }
+
+    .server-stat-metric {
+      font-size: 12px;
+      font-weight: 400;
+    }
+
+    .server-stat-value {
+      display: block;
+      font-size: 18px;
+      line-height: 1;
+      font-weight: 400;
+    }
+
+    .server-stat-value.account-count {
+      color: var(--blue-dark);
+    }
+
+    .server-error-badge {
+      position: absolute;
+      top: -7px;
+      right: -7px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 22px;
+      height: 22px;
+      padding: 0 7px;
+      border-radius: 999px;
+      color: #fff;
+      background: #e5484d;
+      font-size: 12px;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .stat-pill {
+      padding: 7px 10px;
+      border-radius: 999px;
+      color: var(--blue-dark);
+      background: var(--blue-soft);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .stat-pill.stat-error {
+      color: #fff;
+      background: #e5484d;
+    }
+
+    .controls-row {
+      display: grid;
+      grid-template-columns: minmax(0, 0.8fr) minmax(0, 0.8fr) minmax(0, 1.2fr);
+      gap: 10px;
+      margin: 0 0 12px;
+    }
+
+    .controls-row select,
+    .controls-row input {
+      min-height: 46px;
+    }
+
+    .controls-row.user-mode {
+      grid-template-columns: 1fr;
+    }
+
+    .message {
+      display: none;
+      margin-top: 14px;
+      padding: 12px 13px;
+      border-radius: 14px;
+      color: var(--blue-dark);
+      background: #edf6ff;
+      border: 1px solid rgba(29, 116, 245, 0.16);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .message.error {
+      color: var(--danger);
+      background: #fff1f1;
+      border-color: #ffd3d3;
+    }
+
+    .cards {
+      display: grid;
+      gap: 12px;
+    }
+
+    .card {
+      padding: 16px;
+      box-shadow: 0 12px 30px rgba(22, 49, 82, 0.08);
+    }
+
+    .card-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .name {
+      margin: 0;
+      font-size: 18px;
+      line-height: 1.25;
+    }
+
+    .title-line {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+      cursor: pointer;
+    }
+
+    .scene-tag {
+      flex: none;
+      padding: 5px 8px;
+      border-radius: 9px;
+      color: var(--blue-dark);
+      background: var(--blue-soft);
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .account-id {
+      flex: none;
+      padding: 6px 9px;
+      border-radius: 10px;
+      color: #fff;
+      background: var(--blue);
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .head-tags {
+      display: inline-flex;
+      flex: none;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .status-chip {
+      padding: 6px 9px;
+      border-radius: 10px;
+      color: #fff;
+      font-size: 12px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .status-queue {
+      background: #22a06b;
+    }
+
+    .status-waiting {
+      background: #8a98a8;
+    }
+
+    .status-scan {
+      background: #f59e0b;
+    }
+
+    .status-done {
+      background: #eab308;
+      color: #163152;
+    }
+
+    .status-error {
+      background: #e5484d;
+    }
+
+    .status-rest {
+      background: #2f80ed;
+    }
+
+    .row {
+      display: grid;
+      gap: 5px;
+      padding: 10px 0;
+      border-top: 1px solid #edf3fa;
+    }
+
+    .row:first-of-type {
+      border-top: 0;
+    }
+
+    .label {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .value {
+      overflow-wrap: anywhere;
+      font-size: 15px;
+      line-height: 1.5;
+    }
+
+    .value.mono {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 13px;
+    }
+
+    .secret-rows {
+      display: none;
+    }
+
+    .card.show-secrets .secret-rows {
+      display: block;
+    }
+
+    .search {
+      margin-bottom: 0;
+    }
+
+    .empty {
+      padding: 18px;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      top: 50%;
+      z-index: 60;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 148px;
+      padding: 14px 16px;
+      border-radius: 18px;
+      color: #fff;
+      background: rgba(22, 49, 82, 0.9);
+      box-shadow: 0 18px 48px rgba(22, 49, 82, 0.22);
+      font-size: 15px;
+      font-weight: 800;
+      transform: translate(-50%, -50%);
+      backdrop-filter: blur(10px);
+    }
+
+    .spinner {
+      width: 20px;
+      height: 20px;
+      border: 3px solid rgba(255, 255, 255, 0.35);
+      border-top-color: #fff;
+      border-radius: 999px;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 30;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      padding: 18px;
+      background: rgba(10, 31, 58, 0.45);
+      backdrop-filter: blur(8px);
+    }
+
+    .server-modal {
+      width: min(100%, 520px);
+      padding: 18px;
+      border-radius: 24px;
+      background: #fff;
+      box-shadow: 0 24px 80px rgba(10, 31, 58, 0.26);
+    }
+
+    .modal-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .modal-title {
+      margin: 0;
+      color: var(--blue-dark);
+      font-size: 22px;
+      line-height: 1.1;
+    }
+
+    .modal-subtitle {
+      margin-top: 5px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .modal-close {
+      width: 38px;
+      min-height: 38px;
+      padding: 0;
+      border-radius: 999px;
+      color: var(--blue-dark);
+      background: var(--blue-soft);
+    }
+
+    .scene-count-tags,
+    .account-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 12px 0;
+    }
+
+    .scene-count-tag {
+      padding: 7px 10px;
+      border-radius: 999px;
+      color: var(--blue-dark);
+      background: var(--blue-soft);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section class="hero">
+      <div class="eyebrow">TicketMatrix</div>
+      <h1>NOL进度查询</h1>
+      <p class="subtitle">选择场次后输入账号密码可查看实时进度</p>
+    </section>
+
+    <section id="loginPanel" class="panel">
+      <label for="sheetSelect">场次名称</label>
+      <select id="sheetSelect">
+        <option value="">加载中...</option>
+      </select>
+
+      <label for="usernameInput">账号</label>
+      <input id="usernameInput" autocomplete="username" placeholder="请输入账号">
+
+      <label for="passwordInput">密码</label>
+      <input id="passwordInput" type="password" autocomplete="current-password" placeholder="请输入密码">
+
+      <div class="actions">
+        <button id="loginButton">登录查看</button>
+      </div>
+
+      <div id="loginMessage" class="message"></div>
+    </section>
+
+    <section id="dashboard" class="hidden">
+      <div class="topbar">
+        <h2 id="dashboardTitle">查看结果</h2>
+        <button id="logoutButton" class="ghost">退出</button>
+      </div>
+
+      <div id="adminStats" class="admin-stats hidden"></div>
+
+      <div id="controlsRow" class="controls-row">
+        <select id="dashboardSheetSelect">
+          <option value="">加载中...</option>
+        </select>
+        <select id="serverFilterSelect" class="hidden">
+          <option value="">全部服务器</option>
+        </select>
+        <input id="searchInput" class="search hidden" placeholder="搜索账号ID / 昵称 / 账号">
+      </div>
+
+      <div class="dashboard-actions">
+        <button id="refreshButton" class="floating-refresh" aria-label="刷新当前表格" title="刷新当前表格">
+          <svg class="icon" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path d="M577.130667 460.586667 823.125333 277.333333c28.373333-28.373333 28.373333-56.96 0-85.333333L577.130667 8.746667C569.450667 3.2 559.872 0 549.632 0c-25.813333 0-46.506667 20.032-46.506667 44.821333L503.125333 128c-247.466667 0.64-448 200.96-448 448 0 247.488 201.173333 448 449.066667 448 230.208 0 419.861333-172.586667 446.08-394.88 0.213333-0.64 0.874667-7.488 0.874667-10.453333 0-23.466667-19.2-42.666667-42.88-42.666667l-107.541333 0c-35.2 0-61.866667 24.32-65.493333 44.586667C714.538667 728.96 618.965333 810.666667 504.170667 810.666667c-129.92 0-235.114667-104.96-235.114667-234.666667 0-129.301333 104.533333-234.026667 234.048-234.666667l0 83.2c0 24.746667 20.693333 44.8 46.506667 44.8C559.872 469.333333 569.450667 466.154667 577.130667 460.586667z" fill="#ffffff"></path>
+          </svg>
+        </button>
+      </div>
+
+      <div id="cards" class="cards"></div>
+      <div id="dashboardMessage" class="message"></div>
+    </section>
+  </main>
+
+  <div id="loadingToast" class="toast hidden" role="status" aria-live="polite">
+    <span class="spinner"></span>
+    <span>登录中...</span>
+  </div>
+
+  <div id="serverModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="serverModalTitle">
+    <div class="server-modal">
+      <div class="modal-head">
+        <div>
+          <h3 id="serverModalTitle" class="modal-title">服务器详情</h3>
+          <div id="serverModalSubtitle" class="modal-subtitle"></div>
+        </div>
+        <button id="serverModalClose" class="modal-close" aria-label="关闭">×</button>
+      </div>
+      <div id="serverModalBody"></div>
+    </div>
+  </div>
+
+  <script>
+    const state = {
+      token: localStorage.getItem("tm_mobile_token") || "",
+      data: null,
+      sheets: [],
+      search: "",
+      serverFilter: "",
+      autoRefreshTimer: null,
+    };
+
+    const $ = (id) => document.getElementById(id);
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function showMessage(target, text, isError = false) {
+      const el = $(target);
+      el.textContent = text || "";
+      el.classList.toggle("error", isError);
+      el.style.display = text ? "block" : "none";
+    }
+
+    function showLoadingToast(show, text = "加载中...") {
+      $("loadingToast").querySelector("span:last-child").textContent = text;
+      $("loadingToast").classList.toggle("hidden", !show);
+    }
+
+    function displayServerName(name) {
+      return name === "无编号" ? "0" : name;
+    }
+
+    function adminServers() {
+      return state.data?.role === "admin" ? (state.data.stats?.servers || []) : [];
+    }
+
+    function serverByName(name) {
+      return adminServers().find((item) => item.name === name);
+    }
+
+    function serverAccountTagsHtml(serverName) {
+      const accounts = sortAccounts((state.data?.accounts || []).filter((account) => account.server === serverName));
+      const tags = accounts.map((account) => {
+        const status = statusInfo(account);
+        const nickname = account.nickname || `ID ${account.id || "未知"}`;
+        return `<span class="account-tag status-chip ${status.className}">${escapeHtml(nickname)} · ${escapeHtml(status.label)}</span>`;
+      }).join("");
+      return tags || '<span class="account-tag status-chip status-waiting">暂无账号</span>';
+    }
+
+    function sceneTotalTagsHtml(sceneCounts) {
+      const tags = (sceneCounts || []).map((item) => (
+        `<span class="scene-count-tag">${escapeHtml(item.name)} ｜ ${escapeHtml(item.count)}</span>`
+      )).join("");
+      return tags || '<span class="scene-count-tag">暂无账号</span>';
+    }
+
+    async function request(path, options = {}) {
+      const headers = options.headers || {};
+      if (options.body && !headers["Content-Type"]) {
+        headers["Content-Type"] = "application/json";
+      }
+      if (state.token) {
+        headers.Authorization = `Bearer ${state.token}`;
+      }
+      const res = await fetch(path, { ...options, headers });
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        throw new Error(data.message || "请求失败");
+      }
+      return data;
+    }
+
+    async function loadSheets() {
+      try {
+        const data = await request("/api/sheets");
+        state.sheets = data.sheets || [];
+        renderSheetOptions();
+      } catch (error) {
+        $("sheetSelect").innerHTML = '<option value="">加载失败</option>';
+        $("dashboardSheetSelect").innerHTML = '<option value="">加载失败</option>';
+        $("serverFilterSelect").innerHTML = '<option value="">全部服务器</option>';
+        showMessage("loginMessage", error.message, true);
+      }
+    }
+
+    function renderSheetOptions() {
+      const options = state.sheets.map((name) => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join("");
+      const html = `<option value="__all__">全部场次</option>${options}`;
+      $("sheetSelect").innerHTML = html;
+      $("dashboardSheetSelect").innerHTML = html;
+    }
+
+    function renderServerOptions(data) {
+      const previous = state.serverFilter;
+      const items = data.role === "admin" ? (data.stats?.servers || []) : [];
+      const options = items.map((item) => `<option value="${escapeHtml(item.name)}">${escapeHtml(displayServerName(item.name))}</option>`).join("");
+      $("serverFilterSelect").innerHTML = `<option value="">全部服务器</option>${options}`;
+      state.serverFilter = items.some((item) => item.name === previous) ? previous : "";
+      $("serverFilterSelect").value = state.serverFilter;
+    }
+
+    function rowHtml(label, value, className = "") {
+      const display = value || "暂无";
+      return `
+        <div class="row">
+          <div class="label">${escapeHtml(label)}</div>
+          <div class="value ${className}">${escapeHtml(display)}</div>
+        </div>
+      `;
+    }
+
+    function optionalRowHtml(label, value, className = "") {
+      return value ? rowHtml(label, value, className) : "";
+    }
+
+    function leadingTimeMinutes(log) {
+      const match = String(log || "").match(/^\s*(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+      if (!match) return null;
+      const hour = Number(match[1]);
+      const minute = Number(match[2]);
+      const second = Number(match[3] || 0);
+      if (hour > 23 || minute > 59 || second > 59) return null;
+      return hour * 60 + minute + second / 60;
+    }
+
+    function currentMinutes(offsetHours) {
+      const now = new Date();
+      const hour = (now.getUTCHours() + offsetHours + 24) % 24;
+      return hour * 60 + now.getUTCMinutes() + now.getUTCSeconds() / 60;
+    }
+
+    function circularMinuteDiff(a, b) {
+      const diff = Math.abs(a - b);
+      return Math.min(diff, 1440 - diff);
+    }
+
+    function isStaleLog(account) {
+      const logMinutes = leadingTimeMinutes(account.log);
+      if (logMinutes === null) return false;
+      const serverNum = Number.parseInt(String(account.serverRaw || "").trim(), 10);
+      const isRemoteServer = Number.isFinite(serverNum) && serverNum >= 2;
+      const baseMinutes = isRemoteServer ? currentMinutes(0) : currentMinutes(8);
+      const limit = isRemoteServer ? 10 : 30;
+      return circularMinuteDiff(logMinutes, baseMinutes) > limit;
+    }
+
+    function statusInfo(account) {
+      const text = String(account.log || "");
+      if (!text.trim()) return { label: "等待中", className: "status-waiting" };
+      if (text.includes("休息")) return { label: "休息", className: "status-rest" };
+      if (isStaleLog(account)) return { label: "异常", className: "status-error" };
+      if (text.includes("异常") || text.includes("失败")) return { label: "异常", className: "status-error" };
+      if (text.includes("支付")) return { label: "完成", className: "status-done" };
+      if (text.includes("扫描")) return { label: "扫描", className: "status-scan" };
+      if (text.includes("排队") || text.includes("Gate")) return { label: "排队", className: "status-queue" };
+      return { label: "等待中", className: "status-waiting" };
+    }
+
+    function accountIdSortValue(account) {
+      const text = String(account.id || "");
+      const num = Number.parseInt(text, 10);
+      return Number.isFinite(num) && String(num) === text ? num : Number.POSITIVE_INFINITY;
+    }
+
+    function sortAccounts(accounts) {
+      return [...accounts].sort((a, b) => {
+        const aError = statusInfo(a).className === "status-error" ? 0 : 1;
+        const bError = statusInfo(b).className === "status-error" ? 0 : 1;
+        if (aError !== bError) return aError - bError;
+        const aId = accountIdSortValue(a);
+        const bId = accountIdSortValue(b);
+        if (aId !== bId) return aId - bId;
+        return String(a.id || "").localeCompare(String(b.id || ""), "zh-CN", { numeric: true });
+      });
+    }
+
+    function cardHtml(account, role) {
+      const password = role === "admin" ? rowHtml("密码", account.password, "mono") : "";
+      const status = statusInfo(account);
+      return `
+        <article class="card" data-search="${escapeHtml([account.id, account.nickname, account.account, account.scene].join(" ").toLowerCase())}">
+          <div class="card-head">
+            <div>
+              <div class="title-line secret-toggle" role="button" tabindex="0" aria-label="显示或收起账号密码">
+                <span class="scene-tag">${escapeHtml(account.scene || "未知")}</span>
+                <h3 class="name">${escapeHtml(account.nickname || "未命名账号")}</h3>
+              </div>
+            </div>
+            <div class="head-tags">
+              <div class="status-chip ${status.className}">${escapeHtml(status.label)}</div>
+              <div class="account-id">ID ${escapeHtml(account.id)}</div>
+            </div>
+          </div>
+          <div class="secret-rows">
+            ${rowHtml("账号", account.account, "mono")}
+            ${password}
+          </div>
+          ${rowHtml("服务器", displayServerName(account.server))}
+          ${rowHtml("日志", account.log)}
+          ${optionalRowHtml("位置", account.location)}
+        </article>
+      `;
+    }
+
+    function statGroupHtml(title, items) {
+      const pills = (items || []).map((item) => (
+        `<span class="stat-pill ${item.hasError ? "stat-error" : ""}">${escapeHtml(item.name)}：${escapeHtml(item.count)}</span>`
+      )).join("");
+      return `
+        <div class="stat-group">
+          <div class="stat-title">${escapeHtml(title)}</div>
+          <div class="stat-list">${pills || '<span class="stat-pill">暂无数据</span>'}</div>
+        </div>
+      `;
+    }
+
+    function openServerModal(serverName) {
+      const server = serverByName(serverName);
+      if (!server) return;
+      $("serverModalTitle").textContent = `服务器 ${displayServerName(server.name)}`;
+      $("serverModalSubtitle").textContent = server.label || "服务器";
+      $("serverModal").dataset.server = server.name;
+      $("serverModalBody").innerHTML = `
+        <div class="row">
+          <div class="label">IP归属地</div>
+          <div id="serverIpLocation" class="value">${escapeHtml(server.ipLocation || (server.ip ? "查询中..." : "暂无"))}</div>
+        </div>
+        ${rowHtml("IP", server.ip || "暂无", "mono")}
+        <div class="row">
+          <div class="label">账号总计</div>
+          <div class="scene-count-tags">${sceneTotalTagsHtml(server.sceneCounts)}</div>
+        </div>
+        <div class="row">
+          <div class="label">账号</div>
+          <div class="account-tags">${serverAccountTagsHtml(server.name)}</div>
+        </div>
+      `;
+      $("serverModal").classList.remove("hidden");
+      loadIpLocation(server);
+    }
+
+    async function loadIpLocation(server) {
+      if (!server.ip || server.ipLocation) return;
+      const openedServer = server.name;
+      try {
+        const data = await request(`/api/ip-location?ip=${encodeURIComponent(server.ip)}`);
+        server.ipLocation = data.location || "未知";
+      } catch (error) {
+        server.ipLocation = "查询失败";
+      }
+      if ($("serverModal").dataset.server === openedServer && $("serverIpLocation")) {
+        $("serverIpLocation").textContent = server.ipLocation;
+      }
+    }
+
+    function closeServerModal() {
+      $("serverModal").classList.add("hidden");
+    }
+
+    function serverStatGroupHtml(title, items) {
+      const cards = (items || []).map((item) => `
+        <div class="server-stat-card ${item.errorCount ? "stat-error" : ""}" data-server="${escapeHtml(item.name)}" role="button" tabindex="0">
+          ${item.errorCount ? `<span class="server-error-badge">${escapeHtml(item.errorCount)}</span>` : ""}
+          <div>
+            <div class="server-stat-name">${escapeHtml(displayServerName(item.name))}</div>
+            <div class="server-stat-label">${escapeHtml(item.label || "服务器")}</div>
+          </div>
+          <div class="server-stat-side">
+            <div class="server-stat-metric">
+              <span class="server-stat-value account-count">${escapeHtml(item.count)}</span>
+            </div>
+          </div>
+        </div>
+      `).join("");
+      return `
+        <div class="stat-group">
+          <div class="stat-title">${escapeHtml(title)}</div>
+          <div class="server-stat-grid">${cards || '<span class="stat-pill">暂无数据</span>'}</div>
+        </div>
+      `;
+    }
+
+    function renderAdminStats(data) {
+      const el = $("adminStats");
+      if (data.role !== "admin") {
+        el.classList.add("hidden");
+        el.innerHTML = "";
+        return;
+      }
+      el.innerHTML = `
+        ${serverStatGroupHtml("服务器账号数量", data.stats?.servers)}
+        ${statGroupHtml("场次账号数量", data.stats?.scenes)}
+      `;
+      el.classList.remove("hidden");
+      bindServerCards();
+    }
+
+    function renderDashboard() {
+      const data = state.data;
+      if (!data) return;
+
+      $("loginPanel").classList.add("hidden");
+      $("dashboard").classList.remove("hidden");
+      $("dashboardTitle").textContent = data.role === "admin" ? "管理员总览" : "我的账号状态";
+      $("dashboardSheetSelect").value = data.sheet || "";
+      renderAdminStats(data);
+      renderServerOptions(data);
+
+      const accounts = sortAccounts(data.accounts || (data.account ? [data.account] : []));
+      $("searchInput").classList.toggle("hidden", data.role !== "admin");
+      $("serverFilterSelect").classList.toggle("hidden", data.role !== "admin");
+      $("controlsRow").classList.toggle("user-mode", data.role !== "admin");
+      const keyword = state.search.trim().toLowerCase();
+      const visibleAccounts = accounts.filter((account) => {
+        const matchesServer = !state.serverFilter || account.server === state.serverFilter;
+        const haystack = [account.id, account.nickname, account.account, account.scene].join(" ").toLowerCase();
+        const matchesKeyword = !keyword || haystack.includes(keyword);
+        return matchesServer && matchesKeyword;
+      });
+
+      $("cards").innerHTML = visibleAccounts.length
+        ? visibleAccounts.map((account) => cardHtml(account, data.role)).join("")
+        : `<div class="panel empty">${escapeHtml(data.message || "该场次下没有信息")}</div>`;
+      bindSecretToggles();
+      showMessage("dashboardMessage", data.message || "", Boolean(data.message));
+      startAutoRefresh();
+    }
+
+    function resetSession() {
+      stopAutoRefresh();
+      state.token = "";
+      state.data = null;
+      localStorage.removeItem("tm_mobile_token");
+      state.search = "";
+      state.serverFilter = "";
+      $("dashboard").classList.add("hidden");
+      $("loginPanel").classList.remove("hidden");
+      $("passwordInput").value = "";
+      showMessage("dashboardMessage", "");
+    }
+
+    async function login() {
+      showMessage("loginMessage", "");
+      $("loginButton").disabled = true;
+      showLoadingToast(true, "登录中...");
+      try {
+        const data = await request("/api/login", {
+          method: "POST",
+          body: JSON.stringify({
+            sheet: $("sheetSelect").value,
+            username: $("usernameInput").value,
+            password: $("passwordInput").value,
+          }),
+        });
+        state.token = data.token;
+        state.data = data.data;
+        localStorage.setItem("tm_mobile_token", state.token);
+        renderDashboard();
+      } catch (error) {
+        showMessage("loginMessage", error.message, true);
+      } finally {
+        $("loginButton").disabled = false;
+        showLoadingToast(false);
+      }
+    }
+
+    async function refreshData(sheetName = "", options = {}) {
+      const silent = Boolean(options.silent);
+      if (!silent) {
+        showMessage("dashboardMessage", "刷新中...");
+        showLoadingToast(true, "加载中...");
+      }
+      $("refreshButton").disabled = true;
+      try {
+        const selectedSheet = sheetName || $("dashboardSheetSelect").value || state.data?.sheet || "";
+        const query = selectedSheet ? `?sheet=${encodeURIComponent(selectedSheet)}` : "";
+        const data = await request(`/api/data${query}`);
+        state.data = data.data;
+        renderDashboard();
+      } catch (error) {
+        showMessage("dashboardMessage", error.message || "刷新失败，请重新刷新", true);
+        if (/登录/.test(error.message)) {
+          resetSession();
+        }
+      } finally {
+        $("refreshButton").disabled = false;
+        if (!silent) {
+          showLoadingToast(false);
+        }
+      }
+    }
+
+    function stopAutoRefresh() {
+      if (state.autoRefreshTimer) {
+        clearInterval(state.autoRefreshTimer);
+        state.autoRefreshTimer = null;
+      }
+    }
+
+    function startAutoRefresh() {
+      if (!state.token || !state.data || state.autoRefreshTimer) return;
+      state.autoRefreshTimer = setInterval(() => {
+        if (!document.hidden && state.token && state.data) {
+          refreshData("", { silent: true });
+        }
+      }, 3 * 60 * 1000);
+    }
+
+    function bindSecretToggles() {
+      document.querySelectorAll(".secret-toggle").forEach((toggle) => {
+        const toggleCard = () => toggle.closest(".card")?.classList.toggle("show-secrets");
+        toggle.addEventListener("click", toggleCard);
+        toggle.addEventListener("keydown", (event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            toggleCard();
+          }
+        });
+      });
+    }
+
+    function bindServerCards() {
+      document.querySelectorAll(".server-stat-card").forEach((card) => {
+        const open = () => openServerModal(card.dataset.server || "");
+        card.addEventListener("click", open);
+        card.addEventListener("keydown", (event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            open();
+          }
+        });
+      });
+    }
+
+    $("loginButton").addEventListener("click", login);
+    $("passwordInput").addEventListener("keydown", (event) => {
+      if (event.key === "Enter") login();
+    });
+    $("refreshButton").addEventListener("click", () => refreshData());
+    $("logoutButton").addEventListener("click", resetSession);
+    $("dashboardSheetSelect").addEventListener("change", (event) => {
+      state.serverFilter = "";
+      refreshData(event.target.value);
+    });
+    $("serverFilterSelect").addEventListener("change", (event) => {
+      state.serverFilter = event.target.value;
+      showLoadingToast(true, "加载中...");
+      window.setTimeout(() => {
+        renderDashboard();
+        showLoadingToast(false);
+      }, 0);
+    });
+    $("searchInput").addEventListener("input", (event) => {
+      state.search = event.target.value;
+      renderDashboard();
+    });
+    $("serverModalClose").addEventListener("click", closeServerModal);
+    $("serverModal").addEventListener("click", (event) => {
+      if (event.target === $("serverModal")) {
+        closeServerModal();
+      }
+    });
+
+    loadSheets().then(() => {
+      if (state.token) {
+        refreshData();
+      }
+    });
+  </script>
+</body>
+</html>

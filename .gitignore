@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Logs / temp
+*.log
+tmp/
+.DS_Store
+
+# Local overrides
+.env

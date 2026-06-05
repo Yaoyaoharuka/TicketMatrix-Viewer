@@ -1,0 +1,58 @@
+# TicketMatrix Viewer
+
+NOL 进度查询 —— 移动端友好的飞书表格进度查看应用。从 `TicketMatrix` 抢票项目中拆分而来，只负责展示，不参与抢票逻辑。
+
+## 功能
+
+- 选择场次 + 账号密码登录，查看实时进度
+- 账号状态关键词分类（排队 / 扫描 / 完成 / 异常 / 休息 / 等待中）
+- 登录后顶部下拉切换场次
+- 管理员总览：各服务器账号数 / 异常数统计
+- 数据每 3 分钟自动刷新，右下角手动刷新按钮
+
+## 架构
+
+- **后端** `mobile_app.py`：基于 Python 标准库 `http.server`，提供 `/api/login`、`/api/data`、`/api/sheets`、`/api/ip-location` 接口，并托管前端静态文件。
+- **前端** `web/index.html`：单文件 HTML/CSS/JS，无框架、无构建。
+- **数据源**：飞书表格，经 `tools/feishu_sheet.py` 读取（只读子集）。表格 token 配置在 `config/feishu_sheets.json`。
+- 与抢票核心**零代码耦合**，仅以飞书表格作为数据中转。
+
+## 依赖
+
+```bash
+pip install -r requirements.txt
+```
+
+## 配置
+
+`config/feishu_sheets.json`：
+
+```json
+{
+  "poll_interval": 60,
+  "servers": "<服务器表 token>",
+  "sheets": {
+    "bts": "<场次表 token>",
+    "svt": "<场次表 token>"
+  }
+}
+```
+
+可选环境变量（均有默认值，可不设）：
+
+| 变量 | 说明 |
+|---|---|
+| `VIEWER_ADMIN_USER` | 管理员用户名 |
+| `VIEWER_ADMIN_PASSWORD` | 管理员密码 |
+| `FEISHU_APP_ID` | 飞书应用 ID |
+| `FEISHU_APP_SECRET` | 飞书应用 Secret |
+
+## 启动
+
+```bash
+./mobile_app.command
+# 或
+python3 mobile_app.py --host 0.0.0.0 --port 8765
+```
+
+启动后访问 `http://localhost:8765`。需公网访问可用 `cloudflared tunnel --url http://localhost:8765`。
