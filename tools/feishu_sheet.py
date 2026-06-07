@@ -23,7 +23,8 @@ import threading
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CONFIG_DIR = os.path.join(BASE_DIR, "config")
-MAPPING_FILE = os.path.join(CONFIG_DIR, "feishu_sheets.json")
+SHEETS_JSON_ENV = "FEISHU_SHEETS_JSON"
+SHEET_ENV_PREFIX = "FEISHU_SHEET_"
 
 if BASE_DIR not in sys.path:
     sys.path.insert(0, BASE_DIR)
@@ -37,6 +38,29 @@ except ImportError:
     sys.exit(1)
 
 _http = requests.Session()
+
+
+def _load_dotenv():
+    """加载项目根目录 .env（不覆盖已存在的环境变量）。"""
+    path = os.path.join(BASE_DIR, ".env")
+    if not os.path.exists(path):
+        return
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                key, _, value = line.partition("=")
+                key = key.strip()
+                value = value.strip().strip('"').strip("'")
+                if key and key not in os.environ:
+                    os.environ[key] = value
+    except Exception:
+        pass
+
+
+_load_dotenv()
 
 # ==================== 飞书凭证（复用 payment/feishu.py） ====================
 
@@ -280,14 +304,11 @@ _SERVER_COL_MAP = {
 
 
 def _get_servers_token():
-    """从 feishu_sheets.json 获取服务器表 token。"""
-    if not os.path.exists(MAPPING_FILE):
+    """从环境变量获取服务器表 token。"""
+    mapping = _load_mapping_from_env()
+    if not mapping:
         return None
-    try:
-        with open(MAPPING_FILE, "r", encoding="utf-8") as f:
-            return json.load(f).get("servers")
-    except Exception:
-        return None
+    return mapping.get("servers")
 
 
 def _parse_server_sheet(rows):
@@ -1619,27 +1640,65 @@ def sync_one(name, spreadsheet_token, running_accounts_fn=None):
 
 # ==================== 映射配置 ====================
 
+def _load_mapping_from_env():
+    """从环境变量加载飞书表格映射。"""
+    raw_json = os.environ.get(SHEETS_JSON_ENV, "").strip()
+    if raw_json:
+        try:
+            mapping = json.loads(raw_json)
+        except Exception as e:
+            print(f"  ⚠️ 读取 {SHEETS_JSON_ENV} 失败: {e}")
+            return None
+        if not isinstance(mapping, dict):
+            print(f"  ⚠️ {SHEETS_JSON_ENV} 必须是 JSON object")
+            return None
+        return mapping
+
+    sheets = {}
+    for key in sorted(os.environ):
+        if not key.startswith(SHEET_ENV_PREFIX):
+            continue
+        sheet_name = key[len(SHEET_ENV_PREFIX):].strip().lower()
+        token = os.environ.get(key, "").strip()
+        if sheet_name and token:
+            sheets[sheet_name] = token
+
+    servers = os.environ.get("FEISHU_SERVERS_TOKEN", "").strip()
+    interval_raw = os.environ.get("FEISHU_POLL_INTERVAL", "").strip()
+
+    if not sheets and not servers and not interval_raw:
+        return None
+
+    mapping = {
+        "poll_interval": 60,
+        "sheets": sheets,
+    }
+    if servers:
+        mapping["servers"] = servers
+    if interval_raw:
+        try:
+            mapping["poll_interval"] = int(interval_raw)
+        except ValueError:
+            print("  ⚠️ FEISHU_POLL_INTERVAL 必须是整数，已使用默认值 60")
+
+    return mapping
+
+
 def load_mapping():
-    """加载 config/feishu_sheets.json 映射配置
+    """从环境变量加载飞书表格映射配置
 
     Returns:
         tuple: (sheets_dict, poll_interval) 或 (None, None)
     """
-    if not os.path.exists(MAPPING_FILE):
-        return None, None
-
-    try:
-        with open(MAPPING_FILE, "r", encoding="utf-8") as f:
-            mapping = json.load(f)
-    except Exception as e:
-        print(f"  ⚠️ 读取飞书映射配置失败: {e}")
+    mapping = _load_mapping_from_env()
+    if not mapping:
         return None, None
 
     sheets = mapping.get("sheets", {})
     interval = mapping.get("poll_interval", 60)
 
     if not sheets:
-        print("  ⚠️ feishu_sheets.json 中没有配置任何表格")
+        print("  ⚠️ .env 中没有配置任何表格（请设置 FEISHU_SHEET_* 或 FEISHU_SHEETS_JSON）")
         return None, None
 
     return sheets, interval
@@ -1808,15 +1867,12 @@ def main():
 
     sheets, cfg_interval = load_mapping()
     if not sheets:
-        print("❌ 请先配置 config/feishu_sheets.json")
+        print("❌ 请先在 .env 中配置飞书表格 token")
         print("   格式示例:")
-        print('   {')
-        print('     "poll_interval": 60,')
-        print('     "sheets": {')
-        print('       "skz": "你的飞书表格token",')
-        print('       "bts": "你的飞书表格token"')
-        print('     }')
-        print('   }')
+        print("   FEISHU_POLL_INTERVAL=60")
+        print("   FEISHU_SERVERS_TOKEN=你的服务器表token")
+        print("   FEISHU_SHEET_SKZ=你的飞书表格token")
+        print("   FEISHU_SHEET_BTS=你的飞书表格token")
         return
 
     interval = args.interval or cfg_interval or 60
