@@ -481,6 +481,39 @@
       font-size: 13px;
     }
 
+    .log-value {
+      display: grid;
+      gap: 8px;
+    }
+
+    .progress-wrap {
+      display: grid;
+      gap: 5px;
+      margin-top: 2px;
+    }
+
+    .progress-track {
+      height: 10px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: #e8f0f8;
+      border: 1px solid rgba(219, 232, 246, 0.95);
+    }
+
+    .progress-fill {
+      height: 100%;
+      border-radius: inherit;
+      transition: width 0.2s ease;
+    }
+
+    .progress-queue .progress-fill {
+      background: linear-gradient(90deg, #22a06b, #34d399);
+    }
+
+    .progress-scan .progress-fill {
+      background: linear-gradient(90deg, #f59e0b, #fb923c);
+    }
+
     .secret-rows {
       display: none;
     }
@@ -804,6 +837,84 @@
       return value ? rowHtml(label, value, className) : "";
     }
 
+    function clampProgress(value) {
+      if (!Number.isFinite(value)) return 0;
+      return Math.max(0, Math.min(100, value));
+    }
+
+    function formatProgress(value) {
+      const rounded = Math.round(value * 10) / 10;
+      return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
+    }
+
+    function parseDurationSeconds(text) {
+      const durationText = String(text || "").trim();
+      if (!durationText) return null;
+
+      const unitMatches = [...durationText.matchAll(/(\d+(?:\.\d+)?)\s*(小时|分钟|秒|h|m|s)/gi)];
+      if (unitMatches.length) {
+        const totalSeconds = unitMatches.reduce((total, match) => {
+          const amount = Number.parseFloat(match[1]);
+          const unit = match[2].toLowerCase();
+          if (!Number.isFinite(amount)) return total;
+          if (unit === "小时" || unit === "h") return total + amount * 3600;
+          if (unit === "分钟" || unit === "m") return total + amount * 60;
+          return total + amount;
+        }, 0);
+        return Number.isFinite(totalSeconds) ? totalSeconds : null;
+      }
+
+      const seconds = Number.parseFloat(durationText);
+      return Number.isFinite(seconds) ? seconds : null;
+    }
+
+    function logProgressInfo(log, status) {
+      const text = String(log || "");
+      if (status.label === "排队") {
+        const match = text.match(/进度\s*([0-9]+(?:\.[0-9]+)?)\s*%/);
+        if (!match) return null;
+        const percent = clampProgress(Number.parseFloat(match[1]));
+        return { type: "queue", label: "排队进度", percent };
+      }
+
+      if (status.label === "扫描") {
+        const match = text.match(/已扫描\s*([^/|，,]+)/);
+        if (!match) return null;
+        const scannedSeconds = parseDurationSeconds(match[1]);
+        if (scannedSeconds === null) return null;
+        const percent = clampProgress((scannedSeconds / 600) * 100);
+        return { type: "scan", label: "扫描进度", percent };
+      }
+
+      return null;
+    }
+
+    function progressBarHtml(progress) {
+      if (!progress) return "";
+      const percentText = formatProgress(progress.percent);
+      return `
+        <div class="progress-wrap progress-${progress.type}" role="progressbar" aria-label="${escapeHtml(progress.label)}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${escapeHtml(percentText)}">
+          <div class="progress-track">
+            <div class="progress-fill" style="width: ${percentText}%"></div>
+          </div>
+        </div>
+      `;
+    }
+
+    function logRowHtml(account, status) {
+      const display = account.log || "暂无";
+      const progress = logProgressInfo(account.log, status);
+      return `
+        <div class="row">
+          <div class="label">日志</div>
+          <div class="value log-value">
+            <div>${escapeHtml(display)}</div>
+            ${progressBarHtml(progress)}
+          </div>
+        </div>
+      `;
+    }
+
     function leadingTimeMinutes(log) {
       const match = String(log || "").match(/^\s*(\d{1,2}):(\d{2})(?::(\d{2}))?/);
       if (!match) return null;
@@ -872,7 +983,7 @@
         <article class="card" data-search="${escapeHtml([account.id, account.nickname, account.account, account.scene].join(" ").toLowerCase())}">
           <div class="card-head">
             <div>
-              <div class="title-line secret-toggle" role="button" tabindex="0" aria-label="显示或收起账号密码">
+              <div class="title-line secret-toggle" role="button" tabindex="0" aria-label="显示或收起账号详情">
                 <span class="scene-tag">${escapeHtml(account.scene || "未知")}</span>
                 <h3 class="name">${escapeHtml(account.nickname || "未命名账号")}</h3>
               </div>
@@ -885,9 +996,11 @@
           <div class="secret-rows">
             ${rowHtml("账号", account.account, "mono")}
             ${password}
+            ${optionalRowHtml("日期", account.date)}
+            ${optionalRowHtml("区域", account.area)}
           </div>
           ${rowHtml("服务器", displayServerName(account.server))}
-          ${rowHtml("日志", account.log)}
+          ${logRowHtml(account, status)}
           ${optionalRowHtml("位置", account.location)}
         </article>
       `;

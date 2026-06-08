@@ -187,6 +187,8 @@ def _account_payload(account_id, account, include_password=False, sheet_name="")
         "scene": sheet_name,
         "nickname": nickname,
         "account": _first_text(account, ("login_email", "账号", "account", "登录邮箱")),
+        "date": _first_text(account, ("target_day", "目标日期", "日期", "date")),
+        "area": _first_text(account, ("区域", "目标区域", "area", "region", "seat_target", "目标座位", "座位区域")),
         "server": _display_server(server_raw),
         "serverRaw": server_raw,
         "log": log_text,
