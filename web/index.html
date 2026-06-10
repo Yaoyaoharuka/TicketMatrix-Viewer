@@ -723,7 +723,6 @@
       sheets: [],
       search: "",
       serverFilter: "",
-      autoRefreshTimer: null,
     };
 
     const $ = (id) => document.getElementById(id);
@@ -1127,11 +1126,9 @@
         : `<div class="panel empty">${escapeHtml(data.message || "该场次下没有信息")}</div>`;
       bindSecretToggles();
       showMessage("dashboardMessage", data.message || "", Boolean(data.message));
-      startAutoRefresh();
     }
 
     function resetSession() {
-      stopAutoRefresh();
       state.token = "";
       state.data = null;
       localStorage.removeItem("tm_mobile_token");
@@ -1168,12 +1165,9 @@
       }
     }
 
-    async function refreshData(sheetName = "", options = {}) {
-      const silent = Boolean(options.silent);
-      if (!silent) {
-        showMessage("dashboardMessage", "刷新中...");
-        showLoadingToast(true, "加载中...");
-      }
+    async function refreshData(sheetName = "") {
+      showMessage("dashboardMessage", "刷新中...");
+      showLoadingToast(true, "加载中...");
       $("refreshButton").disabled = true;
       try {
         const selectedSheet = sheetName || $("dashboardSheetSelect").value || state.data?.sheet || "";
@@ -1188,26 +1182,8 @@
         }
       } finally {
         $("refreshButton").disabled = false;
-        if (!silent) {
-          showLoadingToast(false);
-        }
+        showLoadingToast(false);
       }
-    }
-
-    function stopAutoRefresh() {
-      if (state.autoRefreshTimer) {
-        clearInterval(state.autoRefreshTimer);
-        state.autoRefreshTimer = null;
-      }
-    }
-
-    function startAutoRefresh() {
-      if (!state.token || !state.data || state.autoRefreshTimer) return;
-      state.autoRefreshTimer = setInterval(() => {
-        if (!document.hidden && state.token && state.data) {
-          refreshData("", { silent: true });
-        }
-      }, 3 * 60 * 1000);
     }
 
     function bindSecretToggles() {
@@ -1242,9 +1218,10 @@
     });
     $("refreshButton").addEventListener("click", () => refreshData());
     $("logoutButton").addEventListener("click", resetSession);
-    $("dashboardSheetSelect").addEventListener("change", (event) => {
+    $("dashboardSheetSelect").addEventListener("change", () => {
       state.serverFilter = "";
-      refreshData(event.target.value);
+      $("serverFilterSelect").value = "";
+      showMessage("dashboardMessage", "已切换场次，点击刷新按钮加载最新数据");
     });
     $("serverFilterSelect").addEventListener("change", (event) => {
       state.serverFilter = event.target.value;
